@@ -1,7 +1,9 @@
 Option Explicit
 Public colFiles As Collection
 Sub getXlsxPathsByYearMonth()
-
+    ' こちらはサンプルコードをコピペ用に抜粋したもの。
+    ' ファイルパスなどは適宜書き換えること。
+    
     Set colFiles = New Collection
 
     Dim folderPath As String

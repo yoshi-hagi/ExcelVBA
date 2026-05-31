@@ -1,4 +1,6 @@
 Sub ExcelVBAADO()
+    ' こちらはサンプルコードをコピペ用に抜粋したもの。
+    ' ファイルパスなどは適宜書き換えること。
 
     Dim objCn As New ADODB.Connection
     Dim objRS As ADODB.Recordset
