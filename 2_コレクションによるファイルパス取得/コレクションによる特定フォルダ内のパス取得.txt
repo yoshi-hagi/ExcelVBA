@@ -1,0 +1,49 @@
+Option Explicit
+Public colFiles As Collection
+Sub getXlsxPathsByYearMonth()
+
+    Set colFiles = New Collection
+
+    Dim folderPath As String
+    folderPath = ThisWorkbook.Path & "\collection_sample_data\"
+
+    If Right(folderPath, 1) <> "\" Then
+        folderPath = folderPath & "\"
+    End If
+
+    Dim startYm As Long
+    Dim endYm As Long
+
+    startYm = CLng(ThisWorkbook.Worksheets("Sheet1").Range("B1").Value)
+    endYm = CLng(ThisWorkbook.Worksheets("Sheet1").Range("B2").Value)
+
+    Dim fileName As String
+    Dim baseName As String
+    Dim fileYm As Long
+    Dim y As Long
+    Dim m As Long
+    Dim el As Variant
+
+    fileName = Dir(folderPath & "*.xlsx")
+    
+    Do While fileName <> ""
+
+        baseName = Left(fileName, 6)
+
+        If IsNumeric(baseName) Then
+        
+                If fileYm >= startYm And fileYm <= endYm Then
+                    colFiles.Add folderPath & fileName
+                End If
+
+        End If
+
+        fileName = Dir()
+
+    Loop
+
+    For Each el In colFiles
+        Debug.Print el
+    Next el
+
+End Sub

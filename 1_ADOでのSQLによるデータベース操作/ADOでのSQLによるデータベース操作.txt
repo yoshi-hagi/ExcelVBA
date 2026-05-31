@@ -1,0 +1,60 @@
+Sub ExcelVBAADO()
+
+    Dim objCn As New ADODB.Connection
+    Dim objRS As ADODB.Recordset
+    Dim strSQL As String
+    Dim i As Long
+
+    ' ADOコネクション
+
+    With objCn
+        .Provider = "Microsoft.ACE.OLEDB.12.0"
+        .Properties("Extended Properties") = "Excel 12.0;HDR=Yes;"
+        .Open ThisWorkbook.Path & "\Data\ProductData.xlsx"
+
+    End With
+
+        'SQL作成
+        strSQL = ""
+        strSQL = strSQL & " SELECT * "
+        strSQL = strSQL & " FROM"
+        strSQL = strSQL & " [Sheet1$]"
+
+'        strSQL = ""
+'        strSQL = strSQL & " SELECT * "
+'        strSQL = strSQL & " FROM"
+'        strSQL = strSQL & " [Sheet1$]"
+'        strSQL = strSQL & " WHERE [生産量] > 500"
+        
+'        strSQL = ""
+'        strSQL = strSQL & " SELECT [品目名]"
+'        strSQL = strSQL & ",SUM([生産量]) AS [生産量]"
+'        strSQL = strSQL & ",SUM([原材料費]) AS [原材料費]"
+'        strSQL = strSQL & ",SUM([労務費]) AS [労務費]"
+'        strSQL = strSQL & ",SUM([その他経費]) AS [その他経費]"
+'        strSQL = strSQL & " FROM"
+'        strSQL = strSQL & " [Sheet1$]"
+'        strSQL = strSQL & " GROUP BY [品目名]"
+
+        '接続
+        Set objRS = New ADODB.Recordset
+        Set objRS = objCn.Execute(strSQL)
+
+        'レコードセットをシート出力
+        With Worksheets("生産データ")
+            .Cells.Delete
+            For i = 0 To objRS.Fields.Count - 1
+                .Cells(1, i + 1) = objRS.Fields(i).Name
+            Next
+            .Range("A2").CopyFromRecordset objRS
+            .Columns("A:Z").AutoFit
+            .Columns("A:Z").NumberFormatLocal = "#,##0;""▲ ""#,##0"
+            .Range("A1").AutoFilter
+        End With
+        
+        '切断
+        objCn.Close
+        Set objRS = Nothing
+        Set objCn = Nothing
+
+End Sub
