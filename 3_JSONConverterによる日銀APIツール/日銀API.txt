@@ -1,0 +1,325 @@
+Option Explicit
+
+Private Const BASE_URL As String = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
+
+'========================
+' メイン処理
+'========================
+Public Sub GetBOJTimeSeriesToSheet()
+
+    On Error GoTo EH
+
+    Dim wsParam As Worksheet
+    Dim wsOut As Worksheet
+
+    Dim url As String
+    Dim jsonText As String
+    Dim json As Object
+
+    Dim statusCode As Long
+    Dim messageId As String
+    Dim messageText As String
+    Dim responseDate As String
+    Dim nextPosition As String
+
+    Dim resultSet As Collection
+    Dim item As Variant
+
+    Dim r As Long
+
+    Set wsParam = ThisWorkbook.Worksheets("DataCodeAPI")
+    Set wsOut = ThisWorkbook.Worksheets("Result")
+
+    '------------------------
+    ' API呼び出し
+    '------------------------
+    url = wsParam.Cells(11, 2).Value
+    Debug.Print url
+    jsonText = HttpGetText(url)
+
+    If Len(jsonText) = 0 Then
+        MsgBox "APIレスポンスが空です。", vbExclamation
+        Exit Sub
+    End If
+
+    Set json = JsonConverter.ParseJson(jsonText)
+
+    statusCode = CLng(json("STATUS"))
+    messageId = CStr(json("MESSAGEID"))
+    messageText = CStr(json("MESSAGE"))
+    responseDate = NzJsonValue(json("DATE"))
+
+    If HasJsonKey(json, "NEXTPOSITION") Then
+        nextPosition = NzJsonValue(json("NEXTPOSITION"))
+    Else
+        nextPosition = ""
+    End If
+
+    '------------------------
+    ' 出力先初期化
+    '------------------------
+    wsOut.Cells.Delete
+
+    wsOut.Range("A2").Value = "STATUS"
+    wsOut.Range("B2").Value = statusCode
+
+    wsOut.Range("A3").Value = "MESSAGEID"
+    wsOut.Range("B3").Value = messageId
+
+    wsOut.Range("A4").Value = "MESSAGE"
+    wsOut.Range("B4").Value = messageText
+
+    wsOut.Range("A5").Value = "DATE"
+    wsOut.Range("B5").Value = responseDate
+
+    wsOut.Range("A6").Value = "NEXTPOSITION"
+    wsOut.Range("B6").Value = nextPosition
+
+    If statusCode <> 200 Then
+        MsgBox "APIエラー: " & statusCode & " / " & messageId & " / " & messageText, vbExclamation
+        Exit Sub
+    End If
+
+    '------------------------
+    ' 明細ヘッダ
+    '------------------------
+    r = 9
+
+    wsOut.Cells(r, 1).Value = "SERIES_CODE"
+    wsOut.Cells(r, 2).Value = "NAME_OF_TIME_SERIES"
+    wsOut.Cells(r, 3).Value = "UNIT"
+    wsOut.Cells(r, 4).Value = "FREQUENCY"
+    wsOut.Cells(r, 5).Value = "CATEGORY"
+    wsOut.Cells(r, 6).Value = "LAST_UPDATE"
+    wsOut.Cells(r, 7).Value = "SURVEY_DATE"
+    wsOut.Cells(r, 8).Value = "VALUE"
+
+    wsOut.Rows(r).Font.Bold = True
+    r = r + 1
+
+    '------------------------
+    ' RESULTSET を展開
+    '------------------------
+    Set resultSet = json("RESULTSET")
+
+    For Each item In resultSet
+        WriteOneSeries wsOut, item, r
+    Next item
+
+    wsOut.Columns("A:H").AutoFit
+    
+    wsOut.Range("A1").Value = "URL"
+    wsOut.Range("B1").Value = url
+
+    MsgBox "取得完了しました。", vbInformation
+    Exit Sub
+
+EH:
+    MsgBox "エラーが発生しました: " & Err.Description, vbCritical
+End Sub
+
+'========================
+' 1系列分を書き出す
+'========================
+Private Sub WriteOneSeries(ByVal ws As Worksheet, ByVal item As Object, ByRef r As Long)
+
+    Dim surveyDates As Collection
+    Dim values As Collection
+    Dim i As Long
+
+    Dim seriesCode As String
+    Dim seriesName As String
+    Dim unitName As String
+    Dim freq As String
+    Dim categoryName As String
+    Dim lastUpdate As String
+
+    seriesCode = NzJsonValue(item("SERIES_CODE"))
+
+
+    If HasJsonKey(item, "UNIT") Then
+            unitName = NzJsonValue(item("UNIT"))
+        Else
+            unitName = ""
+    End If
+
+    If HasJsonKey(item, "CATEGORY") Then
+            categoryName = NzJsonValue(item("CATEGORY"))
+        Else
+            categoryName = ""
+    End If
+        
+    If HasJsonKey(item, "NAME_OF_TIME_SERIES_J") Then
+            seriesName = NzJsonValue(item("NAME_OF_TIME_SERIES_J"))
+        Else
+            seriesName = ""
+    End If
+
+    If HasJsonKey(item, "UNIT_J") Then
+            unitName = NzJsonValue(item("UNIT_J"))
+        Else
+            unitName = ""
+    End If
+
+    If HasJsonKey(item, "CATEGORY_J") Then
+            categoryName = NzJsonValue(item("CATEGORY_J"))
+        Else
+            categoryName = ""
+    End If
+
+
+    freq = NzJsonValue(item("FREQUENCY"))
+    lastUpdate = NzJsonValue(item("LAST_UPDATE"))
+
+    Set surveyDates = item("VALUES")("SURVEY_DATES")
+    Set values = item("VALUES")("VALUES")
+
+    For i = 1 To surveyDates.Count
+        ws.Cells(r, 1).Value = seriesCode
+        ws.Cells(r, 2).Value = seriesName
+        ws.Cells(r, 3).Value = unitName
+        ws.Cells(r, 4).Value = freq
+        ws.Cells(r, 5).Value = categoryName
+        ws.Cells(r, 6).Value = lastUpdate
+        ws.Cells(r, 7).Value = NzJsonValue(surveyDates(i))
+
+        If IsNull(values(i)) Then
+            ws.Cells(r, 8).Value = ""
+        Else
+            ws.Cells(r, 8).Value = values(i)
+        End If
+
+        r = r + 1
+    Next i
+
+End Sub
+
+'========================
+' URL組み立て
+' BOM混入防止のため、ASCII項目はそのまま連結
+'========================
+Private Function BuildCodeApiUrl( _
+    ByVal dbName As String, _
+    ByVal codes As String, _
+    ByVal startDate As String, _
+    ByVal endDate As String, _
+    ByVal lang As String, _
+    ByVal startPosition As String) As String
+
+    Dim url As String
+
+    url = BASE_URL _
+        & "?format=json" _
+        & "&lang=" & lang _
+        & "&db=" & dbName _
+        & "&code=" & codes
+
+    If startDate <> "" Then
+        url = url & "&startDate=" & startDate
+    End If
+
+    If endDate <> "" Then
+        url = url & "&endDate=" & endDate
+    End If
+
+    If startPosition <> "" Then
+        url = url & "&startPosition=" & startPosition
+    End If
+
+    BuildCodeApiUrl = url
+
+End Function
+
+'========================
+' HTTP GET
+'========================
+Private Function HttpGetText(ByVal url As String) As String
+
+    Dim xhr As Object
+
+    Set xhr = CreateObject("MSXML2.XMLHTTP")
+
+    xhr.Open "GET", url, False
+    xhr.setRequestHeader "Accept", "application/json"
+    xhr.setRequestHeader "Accept-Encoding", "gzip"
+    xhr.send
+
+    If xhr.readyState <> 4 Then
+        Err.Raise vbObjectError + 1001, , "HTTP通信が完了しませんでした。"
+    End If
+
+    Select Case xhr.Status
+        Case 200, 400, 500, 503
+            HttpGetText = xhr.responseText
+        Case Else
+            Err.Raise vbObjectError + 1000, , "HTTPエラー: " & xhr.Status & " " & xhr.statusText
+    End Select
+
+End Function
+
+'========================
+' 文字列の前後空白、BOM、ゼロ幅文字を除去
+'========================
+Private Function CleanParam(ByVal v As Variant) As String
+
+    Dim s As String
+
+    If IsError(v) Then
+        CleanParam = ""
+        Exit Function
+    End If
+
+    If IsNull(v) Then
+        CleanParam = ""
+        Exit Function
+    End If
+
+    s = CStr(v)
+
+    ' BOM除去
+    s = Replace$(s, ChrW(&HFEFF), "")
+
+    ' ゼロ幅スペース除去
+    s = Replace$(s, ChrW(&H200B), "")
+    s = Replace$(s, ChrW(&H200C), "")
+    s = Replace$(s, ChrW(&H200D), "")
+    s = Replace$(s, ChrW(&H2060), "")
+
+    ' ノーブレークスペース除去
+    s = Replace$(s, ChrW(&HA0), " ")
+
+    ' 改行・タブ除去
+    s = Replace$(s, vbCr, "")
+    s = Replace$(s, vbLf, "")
+    s = Replace$(s, vbTab, "")
+
+    CleanParam = Trim$(s)
+
+End Function
+
+'========================
+' Null対策
+'========================
+Private Function NzJsonValue(ByVal v As Variant) As String
+    If IsNull(v) Then
+        NzJsonValue = ""
+    Else
+        NzJsonValue = CStr(v)
+    End If
+End Function
+
+'========================
+' JSONキー存在確認
+'========================
+Private Function HasJsonKey(ByVal obj As Object, ByVal keyName As String) As Boolean
+    On Error GoTo EH
+    Dim tmp As Variant
+    tmp = obj(keyName)
+    HasJsonKey = True
+    Exit Function
+EH:
+    HasJsonKey = False
+End Function
+
+
+
