@@ -1,3 +1,4 @@
+' JSONConverterは別途ダウンロードしてください
 Option Explicit
 
 Private Const BASE_URL As String = "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
