@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teams / Outlook Markdown Editor</title>
+<style>
+    :root {
+        --bg: #f5f7fa;
+        --panel: #ffffff;
+        --border: #d8dee8;
+        --text: #20242b;
+        --muted: #667085;
+        --header: #242a35;
+        --button: #ffffff;
+        --button-hover: #f2f4f7;
+        --accent: #5b5fc7;
+        --focus: rgba(91, 95, 199, 0.20);
+        --code-bg: #f3f4f6;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+    }
+
+    body {
+        font-family:
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            "Yu Gothic UI",
+            "Yu Gothic",
+            Meiryo,
+            sans-serif;
+        color: var(--text);
+        background: var(--bg);
+    }
+
+    header {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 18px;
+        background: var(--header);
+        color: #fff;
+    }
+
+    header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 650;
+    }
+
+    .template-switcher {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .template-switcher span {
+        font-size: 12px;
+        color: #dce0e8;
+    }
+
+    .template-btn {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    .template-btn:hover {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .template-btn.active {
+        background: #fff;
+        color: #20242b;
+        border-color: #fff;
+    }
+
+    main {
+        height: calc(100% - 58px);
+        padding: 12px;
+    }
+
+    .workspace {
+        height: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .panel {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+    }
+
+    .panel-header {
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        background: #fafbfc;
+    }
+
+    .panel-title-wrap {
+        min-width: 0;
+    }
+
+    .panel-title {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .panel-subtitle {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .toolbar {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    button {
+        appearance: none;
+        padding: 6px 10px;
+        border: 1px solid #cfd5df;
+        border-radius: 6px;
+        background: var(--button);
+        color: var(--text);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: var(--button-hover);
+    }
+
+    button:focus-visible {
+        outline: 3px solid var(--focus);
+        border-color: var(--accent);
+    }
+
+    textarea {
+        flex: 1;
+        width: 100%;
+        min-height: 0;
+        resize: none;
+        border: 0;
+        outline: 0;
+        padding: 18px;
+        color: var(--text);
+        background: #fff;
+        font-family:
+            "Cascadia Code",
+            "Cascadia Mono",
+            Consolas,
+            "Courier New",
+            monospace;
+        font-size: 14px;
+        line-height: 1.65;
+        tab-size: 4;
+    }
+
+    textarea:focus {
+        box-shadow: inset 0 0 0 2px var(--focus);
+    }
+
+    #preview {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 22px 26px;
+        outline: 0;
+        background: #fff;
+        line-height: 1.65;
+    }
+
+    #preview:focus {
+        box-shadow: inset 0 0 0 2px var(--focus);
+    }
+
+    #preview > :first-child {
+        margin-top: 0;
+    }
+
+    #preview > :last-child {
+        margin-bottom: 0;
+    }
+
+    #preview h1,
+    #preview h2,
+    #preview h3,
+    #preview h4,
+    #preview h5,
+    #preview h6 {
+        margin: 1.1em 0 0.55em;
+        line-height: 1.3;
+    }
+
+    #preview h1 {
+        font-size: 1.75em;
+    }
+
+    #preview h2 {
+        font-size: 1.4em;
+    }
+
+    #preview h3 {
+        font-size: 1.18em;
+    }
+
+    #preview p {
+        margin: 0 0 0.9em;
+    }
+
+    #preview ul,
+    #preview ol {
+        margin: 0 0 0.9em;
+        padding-left: 1.7em;
+    }
+
+    #preview li {
+        margin: 0.18em 0;
+    }
+
+    #preview blockquote {
+        margin: 0 0 0.9em;
+        padding: 0.1em 0 0.1em 0.9em;
+        border-left: 4px solid #c9ccd3;
+        color: #4b5563;
+    }
+
+    #preview code {
+        padding: 0.12em 0.32em;
+        border-radius: 4px;
+        background: var(--code-bg);
+        font-family:
+            "Cascadia Code",
+            Consolas,
+            monospace;
+        font-size: 0.9em;
+    }
+
+    #preview pre {
+        margin: 0 0 1em;
+        padding: 12px 14px;
+        overflow: auto;
+        border: 1px solid #e2e5ea;
+        border-radius: 6px;
+        background: var(--code-bg);
+        white-space: pre-wrap;
+    }
+
+    #preview pre code {
+        padding: 0;
+        background: transparent;
+    }
+
+    #preview a {
+        color: #2457c5;
+        text-decoration: underline;
+    }
+
+    #preview del {
+        color: #667085;
+    }
+
+    #preview hr {
+        margin: 1.2em 0;
+        border: 0;
+        border-top: 1px solid #d7dce4;
+    }
+
+    #preview table {
+        width: 100%;
+        margin: 0 0 1em;
+        border-collapse: collapse;
+    }
+
+    #preview th,
+    #preview td {
+        padding: 7px 9px;
+        border: 1px solid #cfd5df;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    #preview th {
+        background: #f5f6f8;
+        font-weight: 700;
+    }
+
+    .status {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 100;
+        display: none;
+        max-width: min(560px, calc(100vw - 36px));
+        padding: 9px 12px;
+        border-radius: 7px;
+        background: #20242b;
+        color: #fff;
+        font-size: 12px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .help {
+        position: fixed;
+        left: 18px;
+        bottom: 18px;
+        z-index: 90;
+        max-width: min(540px, calc(100vw - 36px));
+        padding: 8px 11px;
+        border: 1px solid #d8dee8;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.96);
+        color: #4b5563;
+        font-size: 11px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .help strong {
+        color: #20242b;
+    }
+
+    @media (max-width: 900px) {
+        header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        main {
+            height: auto;
+        }
+
+        .workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .panel {
+            min-height: 520px;
+        }
+
+        .help {
+            position: static;
+            margin: 0 12px 12px;
+            max-width: none;
+        }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Teams / Outlook Markdown Editor</h1>
+
+    <div class="template-switcher" aria-label="テンプレート切替">
+        <span>テンプレート:</span>
+        <button type="button" class="template-btn active" data-template="copilot">
+            Copilotへのチャット用
+        </button>
+        <button type="button" class="template-btn" data-template="outlook">
+            Outlookへのペースト用
+        </button>
+    </div>
+</header>
+
+<main>
+    <div class="workspace">
+
+        <section class="panel">
+            <div class="panel-header">
+                <div class="panel-title-wrap">
+                    <span class="panel-title">Markdown</span>
+                    <span class="panel-subtitle" id="markdownSubtitle">
+                        Teams / Copilot向けのMarkdownを編集
+                    </span>
+                </div>
+
+                <div class="toolbar">
+                    <button type="button" id="copyMarkdown">コピー</button>
+                    <button type="button" id="pasteMarkdown">貼り付け</button>
+                    <button type="button" id="resetTemplate">初期化</button>
+                    <button type="button" id="clearMarkdown">クリア</button>
+                </div>
+            </div>
+
+            <textarea
+                id="editor"
+                spellcheck="false"
+                aria-label="Markdown editor"
+            ></textarea>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div class="panel-title-wrap">
+                    <span class="panel-title">Preview</span>
+                    <span class="panel-subtitle" id="previewSubtitle">
+                        Teams / Copilot向けの表示確認
+                    </span>
+                </div>
+
+                <div class="toolbar">
+                    <button type="button" id="copyPreview">コピー</button>
+                    <button type="button" id="pastePreview">貼り付け</button>
+                </div>
+            </div>
+
+            <article
+                id="preview"
+                contenteditable="true"
+                spellcheck="true"
+                aria-label="Preview editor"
+            ></article>
+        </section>
+
+    </div>
+</main>
+
+<div class="help" id="help">
+    <strong>対応記法:</strong>
+    見出し、太字、斜体、取り消し線、リンク、引用、箇条書き、番号付きリスト、
+    インラインコード、コードブロック、水平線、簡易テーブル。
+    Previewは直接編集・Ctrl+C / Ctrl+Vも可能です。
+</div>
+
+<div class="status" id="status" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+    "use strict";
+
+    const TEMPLATE_COPILOT = `# 依頼
+
+ここにCopilotへの依頼内容を記載してください。
+
+## 内容
+
+- 実施してほしい内容
+- 前提となる情報
+- 対象となるデータやコード
+
+## 要件
+
+- 要件1
+- 要件2
+- 要件3
+
+## 出力形式
+
+- 希望する形式
+- 必要な粒度
+`;
+
+    const TEMPLATE_OUTLOOK = `# 件名
+
+ここに件名を記載してください。
+
+## 要点
+
+- 要点1
+- 要点2
+- 要点3
+
+## 詳細
+
+ここに本文を記載してください。
+
+## 対応依頼
+
+必要な対応や期限などを記載してください。
+`;
+
+    const state = {
+        currentTemplate: "copilot",
+        contents: {
+            copilot: TEMPLATE_COPILOT,
+            outlook: TEMPLATE_OUTLOOK
+        }
+    };
+
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+    const status = document.getElementById("status");
+    const markdownSubtitle = document.getElementById("markdownSubtitle");
+    const previewSubtitle = document.getElementById("previewSubtitle");
+    const templateButtons = Array.from(document.querySelectorAll(".template-btn"));
+
+    let statusTimer = null;
+
+    function showStatus(message) {
+        clearTimeout(statusTimer);
+        status.textContent = message;
+        status.style.display = "block";
+
+        statusTimer = setTimeout(() => {
+            status.style.display = "none";
+        }, 2200);
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    function safeUrl(url) {
+        const trimmed = String(url).trim();
+
+        if (
+            /^https?:\/\//i.test(trimmed) ||
+            /^mailto:/i.test(trimmed)
+        ) {
+            return escapeHtml(trimmed);
+        }
+
+        return "#";
+    }
+
+    function renderInline(source) {
+        let text = escapeHtml(source);
+        const placeholders = [];
+
+        // Inline code
+        text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+            const token = `%%INLINE_CODE_${placeholders.length}%%`;
+            placeholders.push(`<code>${code}</code>`);
+            return token;
+        });
+
+        // Links
+        text = text.replace(
+            /\[([^\]]+)\]\(([^)\s]+)\)/g,
+            (_, label, url) => `<a href="${safeUrl(url)}">${label}</a>`
+        );
+
+        // Bold + italic
+        text = text.replace(
+            /\*\*\*([^*\n]+)\*\*\*/g,
+            "<strong><em>$1</em></strong>"
+        );
+
+        // Bold
+        text = text.replace(
+            /\*\*([^*\n]+)\*\*/g,
+            "<strong>$1</strong>"
+        );
+
+        // Strikethrough
+        text = text.replace(
+            /~~([^~\n]+)~~/g,
+            "<del>$1</del>"
+        );
+
+        // Italic: *text* or _text_
+        text = text.replace(
+            /(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,!?:;])/g,
+            "$1<em>$2</em>"
+        );
+
+        text = text.replace(
+            /(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?:;])/g,
+            "$1<em>$2</em>"
+        );
+
+        placeholders.forEach((html, index) => {
+            text = text.replace(`%%INLINE_CODE_${index}%%`, html);
+        });
+
+        return text;
+    }
+
+    function isTableSeparator(line) {
+        const trimmed = line.trim();
+        if (!trimmed.includes("|")) {
+            return false;
+        }
+
+        const cells = trimmed
+            .replace(/^\|/, "")
+            .replace(/\|$/, "")
+            .split("|")
+            .map(cell => cell.trim());
+
+        return cells.length > 0 &&
+            cells.every(cell => /^:?-{3,}:?$/.test(cell));
+    }
+
+    function splitTableRow(line) {
+        return line
+            .trim()
+            .replace(/^\|/, "")
+            .replace(/\|$/, "")
+            .split("|")
+            .map(cell => cell.trim());
+    }
+
+    function renderTable(headerLine, separatorLine, bodyLines) {
+        const headers = splitTableRow(headerLine);
+        const aligns = splitTableRow(separatorLine).map(cell => {
+            const left = cell.startsWith(":");
+            const right = cell.endsWith(":");
+
+            if (left && right) return "center";
+            if (right) return "right";
+            if (left) return "left";
+            return "left";
+        });
+
+        let html = "<table><thead><tr>";
+
+        headers.forEach((cell, index) => {
+            html += `<th style="text-align:${aligns[index] || "left"}">${renderInline(cell)}</th>`;
+        });
+
+        html += "</tr></thead><tbody>";
+
+        for (const line of bodyLines) {
+            const cells = splitTableRow(line);
+            html += "<tr>";
+
+            headers.forEach((_, index) => {
+                html += `<td style="text-align:${aligns[index] || "left"}">${renderInline(cells[index] || "")}</td>`;
+            });
+
+            html += "</tr>";
+        }
+
+        html += "</tbody></table>";
+        return html;
+    }
+
+    function isSpecialStart(lines, index) {
+        const line = lines[index] ?? "";
+
+        if (/^\s*$/.test(line)) return true;
+        if (/^\s*```/.test(line)) return true;
+        if (/^\s{0,3}#{1,6}\s+/.test(line)) return true;
+        if (/^\s{0,3}>\s?/.test(line)) return true;
+        if (/^\s{0,3}([-+*])\s+/.test(line)) return true;
+        if (/^\s{0,3}\d+\.\s+/.test(line)) return true;
+        if (/^\s{0,3}((\*|-|_)\s*){3,}$/.test(line.trim())) return true;
+
+        if (
+            index + 1 < lines.length &&
+            line.includes("|") &&
+            isTableSeparator(lines[index + 1])
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    function renderMarkdown(markdown) {
+        const lines = String(markdown)
+            .replace(/\r\n?/g, "\n")
+            .split("\n");
+
+        let html = "";
+        let i = 0;
+
+        while (i < lines.length) {
+            const line = lines[i];
+
+            if (/^\s*$/.test(line)) {
+                i++;
+                continue;
+            }
+
+            // Fenced code block
+            const fenceMatch = line.match(/^\s*```([\w+-]*)\s*$/);
+
+            if (fenceMatch) {
+                const codeLines = [];
+                i++;
+
+                while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+                    codeLines.push(lines[i]);
+                    i++;
+                }
+
+                if (i < lines.length) {
+                    i++;
+                }
+
+                const lang = fenceMatch[1]
+                    ? ` data-language="${escapeHtml(fenceMatch[1])}"`
+                    : "";
+
+                html += `<pre><code${lang}>${escapeHtml(codeLines.join("\n"))}</code></pre>`;
+                continue;
+            }
+
+            // Table
+            if (
+                i + 1 < lines.length &&
+                line.includes("|") &&
+                isTableSeparator(lines[i + 1])
+            ) {
+                const body = [];
+                let j = i + 2;
+
+                while (
+                    j < lines.length &&
+                    lines[j].trim() !== "" &&
+                    lines[j].includes("|") &&
+                    !isSpecialStart(lines, j)
+                ) {
+                    body.push(lines[j]);
+                    j++;
+                }
+
+                html += renderTable(line, lines[i + 1], body);
+                i = j;
+                continue;
+            }
+
+            // Headings
+            const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+)$/);
+
+            if (heading) {
+                const level = heading[1].length;
+                html += `<h${level}>${renderInline(heading[2])}</h${level}>`;
+                i++;
+                continue;
+            }
+
+            // Horizontal rule
+            if (/^\s{0,3}((\*|-|_)\s*){3,}$/.test(line.trim())) {
+                html += "<hr>";
+                i++;
+                continue;
+            }
+
+            // Blockquote
+            if (/^\s{0,3}>\s?/.test(line)) {
+                const quoteLines = [];
+
+                while (
+                    i < lines.length &&
+                    /^\s{0,3}>\s?/.test(lines[i])
+                ) {
+                    quoteLines.push(
+                        lines[i].replace(/^\s{0,3}>\s?/, "")
+                    );
+                    i++;
+                }
+
+                html += `<blockquote>${renderMarkdown(quoteLines.join("\n"))}</blockquote>`;
+                continue;
+            }
+
+            // Unordered list
+            if (/^\s{0,3}[-+*]\s+/.test(line)) {
+                html += "<ul>";
+
+                while (
+                    i < lines.length &&
+                    /^\s{0,3}[-+*]\s+/.test(lines[i])
+                ) {
+                    const item = lines[i].replace(
+                        /^\s{0,3}[-+*]\s+/,
+                        ""
+                    );
+
+                    html += `<li>${renderInline(item)}</li>`;
+                    i++;
+                }
+
+                html += "</ul>";
+                continue;
+            }
+
+            // Ordered list
+            if (/^\s{0,3}\d+\.\s+/.test(line)) {
+                const startMatch = line.match(/^\s{0,3}(\d+)\.\s+/);
+                const start = startMatch ? Number(startMatch[1]) : 1;
+                html += start === 1 ? "<ol>" : `<ol start="${start}">`;
+
+                while (
+                    i < lines.length &&
+                    /^\s{0,3}\d+\.\s+/.test(lines[i])
+                ) {
+                    const item = lines[i].replace(
+                        /^\s{0,3}\d+\.\s+/,
+                        ""
+                    );
+
+                    html += `<li>${renderInline(item)}</li>`;
+                    i++;
+                }
+
+                html += "</ol>";
+                continue;
+            }
+
+            // Paragraph
+            const paragraph = [line];
+            i++;
+
+            while (
+                i < lines.length &&
+                !isSpecialStart(lines, i)
+            ) {
+                paragraph.push(lines[i]);
+                i++;
+            }
+
+            // Teams / Outlookで扱いやすいよう、段落内の改行を維持
+            html += `<p>${paragraph.map(renderInline).join("<br>")}</p>`;
+        }
+
+        return html;
+    }
+
+    function render() {
+        preview.innerHTML = renderMarkdown(editor.value);
+    }
+
+    function saveCurrentContent() {
+        state.contents[state.currentTemplate] = editor.value;
+    }
+
+    function templateDefaults(name) {
+        return name === "outlook"
+            ? TEMPLATE_OUTLOOK
+            : TEMPLATE_COPILOT;
+    }
+
+    function switchTemplate(name) {
+        saveCurrentContent();
+        state.currentTemplate = name;
+        editor.value = state.contents[name];
+
+        templateButtons.forEach(button => {
+            button.classList.toggle(
+                "active",
+                button.dataset.template === name
+            );
+        });
+
+        if (name === "outlook") {
+            markdownSubtitle.textContent =
+                "Outlook貼り付け用の原稿をMarkdownで編集";
+
+            previewSubtitle.textContent =
+                "コピーするとOutlook向けリッチHTMLを優先";
+        } else {
+            markdownSubtitle.textContent =
+                "Teams / Copilot向けのMarkdownを編集";
+
+            previewSubtitle.textContent =
+                "Teams / Copilot向けの表示確認";
+        }
+
+        render();
+        editor.focus();
+    }
+
+    async function copyPlainText(text, successMessage) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                throw new Error("Clipboard API unavailable");
+            }
+
+            showStatus(successMessage);
+            return;
+        } catch (_) {
+            const helper = document.createElement("textarea");
+            helper.value = text;
+            helper.setAttribute("readonly", "");
+            helper.style.position = "fixed";
+            helper.style.left = "-9999px";
+            helper.style.top = "0";
+
+            document.body.appendChild(helper);
+            helper.select();
+            const ok = document.execCommand("copy");
+            helper.remove();
+
+            if (ok) {
+                showStatus(successMessage);
+            } else {
+                showStatus("Ctrl+Cでコピーしてください");
+            }
+        }
+    }
+
+    async function pastePlainTextIntoEditor() {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                const text = await navigator.clipboard.readText();
+
+                editor.setRangeText(
+                    text,
+                    editor.selectionStart,
+                    editor.selectionEnd,
+                    "end"
+                );
+
+                editor.dispatchEvent(new Event("input"));
+                editor.focus();
+                showStatus("Markdownへ貼り付けました");
+            } else {
+                throw new Error("Clipboard API unavailable");
+            }
+        } catch (_) {
+            editor.focus();
+            showStatus("この環境ではCtrl+Vで貼り付けてください");
+        }
+    }
+
+    function makeOutlookHtml() {
+        const wrapper = document.createElement("div");
+
+        wrapper.setAttribute(
+            "style",
+            [
+                "font-family:'Segoe UI',Meiryo,sans-serif",
+                "font-size:11pt",
+                "line-height:1.5",
+                "color:#000000",
+                "background:#ffffff"
+            ].join(";")
+        );
+
+        wrapper.innerHTML = preview.innerHTML;
+
+        wrapper.querySelectorAll("h1").forEach(el => {
+            el.setAttribute(
+                "style",
+                "font-size:18pt;font-weight:700;margin:0 0 10pt 0;color:#000000"
+            );
+        });
+
+        wrapper.querySelectorAll("h2").forEach(el => {
+            el.setAttribute(
+                "style",
+                "font-size:14pt;font-weight:700;margin:12pt 0 6pt 0;color:#000000"
+            );
+        });
+
+        wrapper.querySelectorAll("h3,h4,h5,h6").forEach(el => {
+            el.setAttribute(
+                "style",
+                "font-size:11pt;font-weight:700;margin:10pt 0 4pt 0;color:#000000"
+            );
+        });
+
+        wrapper.querySelectorAll("p").forEach(el => {
+            el.setAttribute(
+                "style",
+                "margin:0 0 8pt 0"
+            );
+        });
+
+        wrapper.querySelectorAll("ul,ol").forEach(el => {
+            el.setAttribute(
+                "style",
+                "margin:0 0 8pt 0;padding-left:24pt"
+            );
+        });
+
+        wrapper.querySelectorAll("li").forEach(el => {
+            el.setAttribute(
+                "style",
+                "margin:0 0 2pt 0"
+            );
+        });
+
+        wrapper.querySelectorAll("blockquote").forEach(el => {
+            el.setAttribute(
+                "style",
+                "margin:0 0 8pt 0;padding-left:10pt;border-left:3px solid #b8b8b8;color:#444444"
+            );
+        });
+
+        wrapper.querySelectorAll("code").forEach(el => {
+            el.setAttribute(
+                "style",
+                "font-family:Consolas,'Courier New',monospace;background:#f2f2f2"
+            );
+        });
+
+        wrapper.querySelectorAll("pre").forEach(el => {
+            el.setAttribute(
+                "style",
+                "font-family:Consolas,'Courier New',monospace;background:#f2f2f2;border:1px solid #dddddd;padding:8pt;white-space:pre-wrap"
+            );
+        });
+
+        wrapper.querySelectorAll("table").forEach(el => {
+            el.setAttribute(
+                "style",
+                "border-collapse:collapse;width:100%;margin:0 0 8pt 0"
+            );
+        });
+
+        wrapper.querySelectorAll("th").forEach(el => {
+            el.setAttribute(
+                "style",
+                "border:1px solid #bfbfbf;padding:5pt;background:#f2f2f2;font-weight:700;text-align:left"
+            );
+        });
+
+        wrapper.querySelectorAll("td").forEach(el => {
+            el.setAttribute(
+                "style",
+                "border:1px solid #bfbfbf;padding:5pt;text-align:left"
+            );
+        });
+
+        wrapper.querySelectorAll("a").forEach(el => {
+            el.setAttribute(
+                "style",
+                "color:#0563c1;text-decoration:underline"
+            );
+        });
+
+        return wrapper.outerHTML;
+    }
+
+    function copyRichFallback(html) {
+        const holder = document.createElement("div");
+        holder.contentEditable = "true";
+        holder.style.position = "fixed";
+        holder.style.left = "-9999px";
+        holder.style.top = "0";
+        holder.innerHTML = html;
+
+        document.body.appendChild(holder);
+
+        const range = document.createRange();
+        range.selectNodeContents(holder);
+
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        const ok = document.execCommand("copy");
+
+        selection.removeAllRanges();
+        holder.remove();
+
+        return ok;
+    }
+
+    async function copyPreviewContent() {
+        const html = state.currentTemplate === "outlook"
+            ? makeOutlookHtml()
+            : `<div>${preview.innerHTML}</div>`;
+
+        const text = preview.innerText;
+
+        try {
+            if (
+                navigator.clipboard &&
+                window.ClipboardItem &&
+                window.isSecureContext
+            ) {
+                const item = new ClipboardItem({
+                    "text/html": new Blob(
+                        [html],
+                        { type: "text/html" }
+                    ),
+                    "text/plain": new Blob(
+                        [text],
+                        { type: "text/plain" }
+                    )
+                });
+
+                await navigator.clipboard.write([item]);
+                showStatus(
+                    state.currentTemplate === "outlook"
+                        ? "Outlook向けの書式付きPreviewをコピーしました"
+                        : "Previewをコピーしました"
+                );
+                return;
+            }
+
+            throw new Error("Rich clipboard unavailable");
+        } catch (_) {
+            const ok = copyRichFallback(html);
+
+            if (ok) {
+                showStatus(
+                    state.currentTemplate === "outlook"
+                        ? "Outlook向けの書式付きPreviewをコピーしました"
+                        : "Previewをコピーしました"
+                );
+            } else {
+                preview.focus();
+                showStatus("Previewを選択してCtrl+Cでコピーしてください");
+            }
+        }
+    }
+
+    async function pasteIntoPreview() {
+        preview.focus();
+
+        try {
+            if (
+                navigator.clipboard &&
+                navigator.clipboard.read &&
+                window.isSecureContext
+            ) {
+                const items = await navigator.clipboard.read();
+
+                for (const item of items) {
+                    if (item.types.includes("text/html")) {
+                        const blob = await item.getType("text/html");
+                        const html = await blob.text();
+
+                        document.execCommand(
+                            "insertHTML",
+                            false,
+                            html
+                        );
+
+                        showStatus("Previewへ書式付きで貼り付けました");
+                        return;
+                    }
+
+                    if (item.types.includes("text/plain")) {
+                        const blob = await item.getType("text/plain");
+                        const text = await blob.text();
+
+                        document.execCommand(
+                            "insertText",
+                            false,
+                            text
+                        );
+
+                        showStatus("Previewへ貼り付けました");
+                        return;
+                    }
+                }
+            }
+
+            throw new Error("Clipboard read unavailable");
+        } catch (_) {
+            showStatus("PreviewをクリックしてCtrl+Vで貼り付けてください");
+        }
+    }
+
+    templateButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            switchTemplate(button.dataset.template);
+        });
+    });
+
+    editor.addEventListener("input", () => {
+        state.contents[state.currentTemplate] = editor.value;
+        render();
+    });
+
+    editor.addEventListener("keydown", event => {
+        if (event.key !== "Tab") {
+            return;
+        }
+
+        event.preventDefault();
+
+        editor.setRangeText(
+            "    ",
+            editor.selectionStart,
+            editor.selectionEnd,
+            "end"
+        );
+
+        editor.dispatchEvent(new Event("input"));
+    });
+
+    document
+        .getElementById("copyMarkdown")
+        .addEventListener("click", () => {
+            copyPlainText(
+                editor.value,
+                "Markdownをコピーしました"
+            );
+        });
+
+    document
+        .getElementById("pasteMarkdown")
+        .addEventListener("click", pastePlainTextIntoEditor);
+
+    document
+        .getElementById("copyPreview")
+        .addEventListener("click", copyPreviewContent);
+
+    document
+        .getElementById("pastePreview")
+        .addEventListener("click", pasteIntoPreview);
+
+    document
+        .getElementById("clearMarkdown")
+        .addEventListener("click", () => {
+            editor.value = "";
+            state.contents[state.currentTemplate] = "";
+            render();
+            editor.focus();
+            showStatus("Markdownをクリアしました");
+        });
+
+    document
+        .getElementById("resetTemplate")
+        .addEventListener("click", () => {
+            const value = templateDefaults(state.currentTemplate);
+            editor.value = value;
+            state.contents[state.currentTemplate] = value;
+            render();
+            editor.focus();
+            showStatus("現在のテンプレートを初期状態へ戻しました");
+        });
+
+    editor.value = state.contents.copilot;
+    render();
+})();
+</script>
+
+</body>
+</html>
